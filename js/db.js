@@ -12,12 +12,25 @@ import {
   writeBatch,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as fbSignOut,
+  onAuthStateChanged,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { firebaseConfig } from './config.js';
 
 export const isConfigured = Boolean(firebaseConfig.projectId);
 
-const db = isConfigured ? getFirestore(initializeApp(firebaseConfig)) : null;
+const app = isConfigured ? initializeApp(firebaseConfig) : null;
+const db = app ? getFirestore(app) : null;
+const auth = app ? getAuth(app) : null;
 const BATCH_LIMIT = 400;
+
+export const onAuth = (cb) => onAuthStateChanged(auth, cb);
+export const signIn = () => signInWithPopup(auth, new GoogleAuthProvider()).then((r) => r.user);
+export const signOut = () => fbSignOut(auth);
 
 const withId = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 

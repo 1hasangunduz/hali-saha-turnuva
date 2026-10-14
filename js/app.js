@@ -1,11 +1,11 @@
 import * as db from './db.js';
 import { scoreOf, computeStandings, computeLeaders, generateRoundRobin } from './stats.js';
-import { ADMIN_PIN_SHA256 } from './config.js';
+import { ADMIN_EMAIL } from './config.js';
 
 const MAX_PLAYERS = 25;
 const DEFAULT_TITLE = 'Halı Saha Turnuvası';
 
-const state = { teams: [], matches: [], settings: {}, teamsLoaded: false, matchesLoaded: false };
+const state = { teams: [], matches: [], settings: {}, user: null, teamsLoaded: false, matchesLoaded: false };
 const app = document.getElementById('app');
 const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
@@ -69,46 +69,26 @@ function fillTeamSelect(select, placeholder) {
   if (teamById(prev)) select.value = prev;
 }
 
-// ---------- admin PIN (UI-only guard) ----------
+// ---------- admin (Google sign-in, enforced by firestore.rules) ----------
 
-async function sha256(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+const isAdmin = () => Boolean(ADMIN_EMAIL) && state.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-const isAdmin = () => sessionStorage.getItem('admin') === '1';
-
-function requirePin() {
-  if (isAdmin()) return Promise.resolve(true);
-  const dlg = document.getElementById('pin-dialog');
-  const form = dlg.querySelector('form');
-  const err = dlg.querySelector('.error-text');
-  form.pin.value = '';
-  err.textContent = '';
-
-  return new Promise((resolve) => {
-    let ok = false;
-    let checking = false;
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      if (e.submitter?.value === 'cancel') return dlg.close();
-      if (checking) return;
-      checking = true;
-      err.textContent = '';
-      const hash = await sha256(form.pin.value.trim());
-      checking = false;
-      if (hash === ADMIN_PIN_SHA256) {
-        ok = true;
-        sessionStorage.setItem('admin', '1');
-        dlg.close();
-      } else {
-        err.textContent = 'PIN yanlış.';
-      }
-    };
-    dlg.addEventListener('close', () => resolve(ok), { once: true });
-    dlg.showModal();
-    form.pin.focus();
-  });
+async function requireAdmin() {
+  if (isAdmin()) return true;
+  if (!ADMIN_EMAIL) {
+    toast('Yönetici e-postası js/config.js içinde tanımlı değil.', true);
+    return false;
+  }
+  try {
+    const user = await db.signIn();
+    state.user = user;
+    if (isAdmin()) return true;
+    await db.signOut();
+    toast('Bu Google hesabı yönetici değil.', true);
+  } catch (e) {
+    if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast(`Giriş başarısız: ${e.message}`, true);
+  }
+  return false;
 }
 
 // ---------- shared renderers ----------
@@ -292,11 +272,11 @@ const views = {
         app.innerHTML = `
           <section class="card center">
             <h2>Yönetim</h2>
-            <p class="muted">Fikstür oluşturma, silme ve sıfırlama işlemleri PIN ile açılır.</p>
-            <button id="unlock" class="btn primary">Kilidi Aç</button>
+            <p class="muted">Fikstür oluşturma, silme ve sıfırlama yalnızca yönetici Google hesabıyla yapılır.</p>
+            <button id="unlock" class="btn primary">Google ile Giriş Yap</button>
           </section>`;
         document.getElementById('unlock').onclick = async () => {
-          if (!(await requirePin())) return;
+          if (!(await requireAdmin())) return;
           this.mount();
           this.update();
         };
@@ -341,7 +321,7 @@ const views = {
           </form>
         </section>
 
-        <p class="center"><button id="lock" class="btn">Kilitle</button></p>`;
+        <p class="center muted small">${esc(state.user?.email)} · <button id="lock" class="btn small">Çıkış Yap</button></p>`;
 
       const settingsForm = document.getElementById('settings-form');
       settingsForm.tournamentName.value = state.settings.tournamentName || DEFAULT_TITLE;
@@ -385,10 +365,7 @@ const views = {
         if (ok) e.target.reset();
       });
 
-      document.getElementById('lock').onclick = () => {
-        sessionStorage.removeItem('admin');
-        this.mount();
-      };
+      document.getElementById('lock').onclick = () => run(() => db.signOut());
     },
     update() {
       const info = document.getElementById('fixture-info');
@@ -517,7 +494,7 @@ function openMatch(id) {
   });
 
   document.getElementById('mm-delete').onclick = async () => {
-    if (!(await requirePin())) return;
+    if (!(await requireAdmin())) return;
     if (await run(() => db.deleteMatch(id), 'Maç silindi.')) modal.close();
   };
 }
@@ -593,7 +570,7 @@ function openTeam(id) {
   });
 
   document.getElementById('tm-delete').onclick = async () => {
-    if (!(await requirePin())) return;
+    if (!(await requireAdmin())) return;
     if (await run(() => db.deleteTeam(id, state.matches), 'Takım ve maçları silindi.')) modal.close();
   };
 }
@@ -670,5 +647,9 @@ if (!db.isConfigured) {
       console.error(e);
       toast(`Veritabanı hatası: ${e.message}`, true);
     },
+  });
+  db.onAuth((user) => {
+    state.user = user;
+    if (currentView === views.yonetim && loaded()) route();
   });
 }
