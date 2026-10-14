@@ -3,7 +3,7 @@ import { scoreOf, computeStandings, computeLeaders, generateRoundRobin } from '.
 import { ADMIN_EMAIL } from './config.js';
 
 const MAX_PLAYERS = 25;
-const DEFAULT_TITLE = 'Halı Saha Turnuvası';
+const DEFAULT_TITLE = 'Insider One Cup';
 
 const state = { teams: [], matches: [], settings: {}, user: null, teamsLoaded: false, matchesLoaded: false };
 const app = document.getElementById('app');
