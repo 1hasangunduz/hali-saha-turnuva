@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// Open tournament site: anyone can read and write. These rules only enforce
+// document shape and size limits; the admin PIN is a UI-level guard.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function shortString(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    function validTeam(d) {
+      return d.keys().hasOnly(['name', 'captain', 'players', 'createdAt'])
+        && shortString(d.name, 40) && d.name.size() > 0
+        && (!('captain' in d) || shortString(d.captain, 40))
+        && d.players is list && d.players.size() <= 25
+        && d.createdAt is timestamp;
+    }
+
+    function validMatch(d) {
+      return d.keys().hasOnly(['homeTeamId', 'awayTeamId', 'date', 'pitch', 'status', 'goals', 'createdAt'])
+        && shortString(d.homeTeamId, 40) && shortString(d.awayTeamId, 40)
+        && d.homeTeamId != d.awayTeamId
+        && shortString(d.date, 20)
+        && shortString(d.pitch, 40)
+        && d.status in ['scheduled', 'played']
+        && d.goals is list && d.goals.size() <= 60
+        && d.createdAt is timestamp;
+    }
+
+    match /teams/{id} {
+      allow read, delete: if true;
+      allow create, update: if validTeam(request.resource.data);
+    }
+
+    match /matches/{id} {
+      allow read, delete: if true;
+      allow create, update: if validMatch(request.resource.data);
+    }
+
+    match /meta/settings {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['tournamentName'])
+        && shortString(request.resource.data.tournamentName, 60);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
