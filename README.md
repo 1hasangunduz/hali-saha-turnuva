@@ -15,7 +15,7 @@ GitHub Pages üzerinde çalışan, Firebase Firestore'a bağlı lig usulü halı
 2. **Build → Firestore Database → Create database** → *production mode* → konum `eur3 (europe-west)`.
 3. **Build → Authentication → Get started → Sign-in method → Google** → Enable.
    **Settings → Authorized domains** listesine `<kullanıcı>.github.io` ekle.
-4. [`firestore.rules`](firestore.rules) içindeki `ADMIN_EMAIL_HERE` yerine yönetici Gmail adresini yaz,
+4. [`firestore.rules`](firestore.rules) içindeki yönetici e-postasını kendi Gmail adresinle değiştir,
    içeriği Firestore **Rules** sekmesine yapıştır → **Publish**.
 5. **Project settings (⚙️) → General → Your apps → Web (`</>`)** → çıkan `firebaseConfig` değerlerini
    ve aynı yönetici e-postasını (`ADMIN_EMAIL`) [`js/config.js`](js/config.js) içine yaz.
