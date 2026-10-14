@@ -123,8 +123,10 @@ input, select, textarea {
   border-radius: 10px;
   background: #fff;
   width: 100%;
+  min-height: 2.75rem;
   color: var(--text);
 }
+textarea { min-height: auto; }
 input[type='checkbox'] { width: auto; accent-color: var(--accent); }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--orange); border-color: transparent; }
 .form-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
@@ -185,7 +187,8 @@ tbody tr:hover { background: #fcfaf7; }
 }
 .match:hover { border-color: var(--orange); box-shadow: 0 4px 14px rgb(255 97 38 / .12); }
 .m-meta { font-size: .78rem; color: var(--muted); }
-.m-line { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .75rem; font-weight: 600; }
+.m-line { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: .75rem; font-weight: 600; }
+.m-line .home, .m-line .away { overflow-wrap: anywhere; line-height: 1.25; }
 .m-line .home { text-align: right; }
 .score {
   background: var(--ink);
@@ -269,8 +272,23 @@ dialog::backdrop { background: rgb(24 24 27 / .6); backdrop-filter: blur(2px); }
 @media (max-width: 640px) {
   .topbar-inner { padding: .7rem .75rem; }
   .brand { font-size: 1rem; }
-  nav { width: 100%; }
-  nav a { padding: .45rem .8rem; }
-  .m-line { font-size: .9rem; gap: .4rem; }
+  .brand { width: 100%; justify-content: center; }
+  nav { width: 100%; flex-wrap: wrap; justify-content: center; gap: .3rem; overflow: visible; }
+  nav a { padding: .4rem .75rem; font-size: .88rem; }
+  main { padding: 1rem .75rem 2.5rem; }
+  .card { padding: 1rem; }
+  .match { padding: .6rem .7rem; }
+  .m-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'home score' 'away score';
+    row-gap: .2rem;
+    column-gap: .75rem;
+    font-size: .92rem;
+  }
+  .m-line .home { grid-area: home; text-align: left; }
+  .m-line .away { grid-area: away; }
+  .m-line .score { grid-area: score; }
+  .m-line .home, .m-line .away { overflow-wrap: normal; }
+  .score { min-width: 3rem; padding: .2rem .55rem; }
   th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8) { display: none; }
 }
